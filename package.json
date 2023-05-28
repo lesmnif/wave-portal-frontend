@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@adraffy/ens-normalize": "^1.9.0",
+    "@headlessui/react": "^1.7.14",
     "autoprefixer": "10.4.14",
     "ethers": "^5.7.2",
     "next": "13.4.3",

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { ethers } from "ethers"
 import abi from "../utils/WavePortal.json"
 import { toast } from "react-hot-toast"
+import Modal from "../components/Modal"
 
 const getEthereumObject = () => window.ethereum
 
@@ -33,10 +34,16 @@ const findMetaMaskAccount = async () => {
 
 export default function Index() {
   const [currentAccount, setCurrentAccount] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
+  const [allWaves, setAllWaves] = useState([])
+  const [message, setMessage] = useState("")
+  const [open, setOpen] = useState(false)
 
-  const contractAddress = "0x4E49d7f7947a43012180293B3E9C84fEA77212AB"
+  console.log("whata", allWaves)
+
+  const contractAddress = "0xDc0f050da84194E4aF63Cfa7099E723461d95C5D"
   const contractABI = abi.abi
+
   const connectWallet = async () => {
     try {
       const ethereum = getEthereumObject()
@@ -56,12 +63,10 @@ export default function Index() {
     }
   }
 
-  const getTotalWaves = async () => {
+  const getAllWaves = async () => {
     try {
       const { ethereum } = window
-
       if (ethereum) {
-        const userAddress = ethereum.selectedAddress
         const provider = new ethers.providers.Web3Provider(ethereum)
         const signer = provider.getSigner()
         const wavePortalContract = new ethers.Contract(
@@ -70,13 +75,30 @@ export default function Index() {
           signer
         )
 
-        console.log("hello", contractAddress, contractABI, signer)
-
-        const count = await wavePortalContract.getTotalWaves(userAddress)
-        toast.success(`You've waved a total of ${count.toNumber()} times`, {
-          icon: "👋",
+        /*
+         * Call the getAllWaves method from your Smart Contract
+         */
+        const waves = await wavePortalContract.getAllWaves()
+        /*
+         * We only need address, timestamp, and message in our UI so let's
+         * pick those out
+         */
+        let wavesCleaned = []
+        waves.forEach((wave) => {
+          wavesCleaned.push({
+            address: wave.waver,
+            timestamp: new Date(wave.timestamp * 1000),
+            message: wave.message,
+          })
         })
-        console.log("Retrieved total wave count...", count.toNumber())
+        /*
+         * Store our data in React State
+         */
+        console.log("dafuc", wavesCleaned)
+        setAllWaves(wavesCleaned)
+        wavesCleaned.length === 0
+          ? toast.error("You haven't waved yet!")
+          : toast.success("Here we go!")
       } else {
         console.log("Ethereum object doesn't exist!")
       }
@@ -85,67 +107,56 @@ export default function Index() {
     }
   }
 
-  const wave = async () => {
+  const wave = async (textareaMessage) => {
     try {
       const { ethereum } = window
 
       if (ethereum) {
-        const userAddress = ethereum.selectedAddress
+        setOpen(false)
+        setIsLoading(true)
         const provider = new ethers.providers.Web3Provider(ethereum)
-        console.log("this is my provider", provider)
         const signer = provider.getSigner()
         const wavePortalContract = new ethers.Contract(
           contractAddress,
           contractABI,
           signer
         )
-        console.log("this is my userAdress", userAddress)
-        const user = await wavePortalContract.getUserMap(userAddress)
-        console.log(user)
-        if (!user.isAuthorized) {
-          if (window.confirm("You need to authorize this account to wave")) {
-            const auth = await wavePortalContract.toggleAuthorization(
-              userAddress
-            )
-            toast.loading("Authorizing account...", {
-              duration: Infinity,
-            })
-            await auth.wait()
-            toast.dismiss()
-            toast.success("Successfully authenticated, you can wave now!",{
-              duration: 5000
-            })
-          } else {
-            return
-          }
-        }
-        console.log("my user is that: ", user)
-        const waveTxn = await wavePortalContract.wave(userAddress)
+        const waveTxn = await wavePortalContract.wave(textareaMessage)
         console.log("Mining...", waveTxn.hash)
         toast.loading("Mining your wave...", {
           duration: Infinity,
         })
         await waveTxn.wait()
-        const count = await wavePortalContract.getTotalWaves(userAddress)
+        const waves = await wavePortalContract.getAllWaves()
+
+        const wavesCleaned = []
+        waves.forEach((wave) => {
+          wavesCleaned.push({
+            address: wave.waver,
+            timestamp: new Date(wave.timestamp * 1000),
+            message: wave.message,
+          })
+        })
+
+        console.log("dafuc", wavesCleaned)
+        setAllWaves(wavesCleaned)
         toast.dismiss()
-        toast.success(
-          `Finished mining your wave! You've waved ${count.toNumber()} times! `,
-          {
-            duration: 5000,
-            icon: "😲",
-          }
-        )
+        toast.success(`Finished mining your wave!`, {
+          duration: 5000,
+          icon: "😲",
+        })
+        setIsLoading(false)
       } else {
         toast.dismiss()
+        setIsLoading(false)
         console.log("Ethereum object doesn't exist!")
       }
     } catch (error) {
       toast.dismiss()
+      setIsLoading(false)
       console.log(error)
     }
   }
-
-  
 
   useEffect(() => {
     findMetaMaskAccount().then((account) => {
@@ -163,6 +174,13 @@ export default function Index() {
           <h2 className="mx-auto max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl">
             👋 Hey there!
           </h2>
+          <Modal
+            open={open}
+            setOpen={setOpen}
+            wave={wave}
+            message={message}
+            setMessage={setMessage}
+          />
           <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-300">
             I am Bogdan and I love working on AI stuff, reading and playing
             piano. Make sure to wave at me!
@@ -178,18 +196,102 @@ export default function Index() {
             </div>
           ) : (
             <div className="mt-10 flex items-center justify-center gap-x-6">
-              <div
+              <button
+                disabled={isLoading}
                 className="rounded-md hover:cursor-pointer bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                onClick={wave}
+                onClick={() => setOpen(true)}
               >
                 Wave at me!
-              </div>
+              </button>
               <div
                 className=" hover:cursor-pointer text-sm font-semibold leading-6 text-white"
-                onClick={getTotalWaves}
+                onClick={getAllWaves}
               >
-                How many times I waved?
+                How many people waved?
               </div>
+            </div>
+          )}
+          {allWaves.length !== 0 && (
+            <div className="bg-gray-900 py-5 text-white rounded-lg border-gray-800 border mt-7">
+              <table className=" w-full whitespace-nowrap text-left">
+                <colgroup>
+                  <col className="w-full sm:w-4/12" />
+                  <col className="lg:w-4/12" />
+                  <col className="lg:w-2/12" />
+                  <col className="lg:w-1/12" />
+                  <col className="lg:w-1/12" />
+                </colgroup>
+                <thead className="border-b border-white/10 text-sm leading-6 text-white">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="py-2 pl-4 pr-8 font-semibold sm:pl-6 lg:pl-8"
+                    >
+                      Message
+                    </th>
+                    <th
+                      scope="col"
+                      className="hidden py-2 pl-0 pr-8 font-semibold sm:table-cell"
+                    >
+                      Address
+                    </th>
+                    <th
+                      scope="col"
+                      className="py-2 pl-0 pr-4 text-right font-semibold sm:pr-8 sm:text-left lg:pr-20 hidden sm:block"
+                    >
+                      Timestamp
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {allWaves.map((item) => (
+                    <tr key={item.commit} className="text-white">
+                      <td className="py-4 pl-4 pr-8 sm:pl-6 lg:pl-8">
+                        <div className="flex items-center gap-x-4">
+                          <div className="truncate text-sm font-medium leading-6 text-white">
+                            {item.message}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="hidden py-4 pl-0 pr-4 sm:table-cell sm:pr-8">
+                        <div className="flex gap-x-3">
+                          <div className="font-mono text-sm leading-6 text-gray-400">
+                            {item.address}
+                          </div>
+                          {/* <div className="rounded-md bg-gray-700/40 px-2 py-1 text-xs font-medium text-gray-400 ring-1 ring-inset ring-white/10">
+                          {item.message}
+                        </div> */}
+                        </div>
+                      </td>
+                      <td className="py-4 pl-0 pr-4 text-sm leading-6 sm:pr-8 lg:pr-20 hidden sm:block">
+                        <div className="flex items-center justify-end gap-x-2 sm:justify-start">
+                          <time
+                            className="text-gray-400 sm:hidden"
+                            dateTime={item.timestamp.toString()}
+                          >
+                            {item.timestamp.toLocaleString([], {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </time>
+                          <div className="hidden text-white sm:block">
+                            {item.timestamp.toLocaleString([], {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
           <svg
