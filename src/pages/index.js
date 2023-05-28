@@ -39,9 +39,8 @@ export default function Index() {
   const [message, setMessage] = useState("")
   const [open, setOpen] = useState(false)
 
-  console.log("whata", allWaves)
 
-  const contractAddress = "0xDc0f050da84194E4aF63Cfa7099E723461d95C5D"
+  const contractAddress = "0xcaE64B60e770D0039e63b3Af86aa6369E1F27a9B"
   const contractABI = abi.abi
 
   const connectWallet = async () => {
@@ -75,14 +74,8 @@ export default function Index() {
           signer
         )
 
-        /*
-         * Call the getAllWaves method from your Smart Contract
-         */
         const waves = await wavePortalContract.getAllWaves()
-        /*
-         * We only need address, timestamp, and message in our UI so let's
-         * pick those out
-         */
+  
         let wavesCleaned = []
         waves.forEach((wave) => {
           wavesCleaned.push({
@@ -91,10 +84,7 @@ export default function Index() {
             message: wave.message,
           })
         })
-        /*
-         * Store our data in React State
-         */
-        console.log("dafuc", wavesCleaned)
+        
         setAllWaves(wavesCleaned)
         wavesCleaned.length === 0
           ? toast.error("You haven't waved yet!")
@@ -138,10 +128,9 @@ export default function Index() {
           })
         })
 
-        console.log("dafuc", wavesCleaned)
         setAllWaves(wavesCleaned)
         toast.dismiss()
-        toast.success(`Finished mining your wave!`, {
+        toast.success(`Finished mining your wave! You've also won 0.0001 ETH!`, {
           duration: 5000,
           icon: "😲",
         })
@@ -172,7 +161,7 @@ export default function Index() {
       <div className="mx-auto max-w-7xl py-24 sm:px-6 sm:py-32 lg:px-8">
         <div className="relative isolate overflow-hidden bg-gray-900 px-6 py-24 text-center shadow-2xl sm:rounded-3xl sm:px-16">
           <h2 className="mx-auto max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            👋 Hey there!
+            👋 Hey there, wave at me and win some ETH!
           </h2>
           <Modal
             open={open}
