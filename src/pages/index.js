@@ -99,6 +99,11 @@ export default function Index() {
 
   const wave = async (textareaMessage) => {
     try {
+
+      if(message.length < 5){
+        return alert("Message must be at least 5 characters")
+      }
+
       const { ethereum } = window
 
       if (ethereum) {
